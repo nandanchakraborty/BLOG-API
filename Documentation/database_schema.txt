@@ -1,0 +1,166 @@
+╔══════════════════════════════════════════════════════════════════════════════════════╗
+║                           BLOG DATABASE SCHEMA                                     ║
+╚══════════════════════════════════════════════════════════════════════════════════════╝
+
+
+┌──────────────────────────┐
+│          USERS           │
+├──────────────────────────┤
+│ PK  id                   │
+│     username             │
+│     email                │
+│     password             │
+│     profile_image        │
+│     bio                  │
+│     role                 │
+│     created_at           │
+│     updated_at           │
+└─────────────┬────────────┘
+              │
+              │ 1
+              │
+              │ M
+              ▼
+
+
+┌──────────────────────────┐
+│          POSTS           │
+├──────────────────────────┤
+│ PK  id                   │
+│ FK  user_id              │ ──────────────── USERS.id
+│     title                │
+│     slug                 │
+│     content              │
+│     featured_image       │
+│     status               │
+│     view_count           │
+│     like_count           │
+│     comment_count        │
+│     created_at           │
+│     updated_at           │
+└───────┬────────┬─────────┘
+        │        │
+        │        │
+        │        │
+        │        │
+        │        │
+        │        │
+        ▼        ▼
+
+
+
+┌──────────────────────────┐        ┌──────────────────────────┐
+│        COMMENTS          │        │       CATEGORIES         │
+├──────────────────────────┤        ├──────────────────────────┤
+│ PK  id                   │        │ PK  id                   │
+│ FK  post_id              │        │     name                 │
+│ FK  user_id              │        │     slug                 │
+│ FK  parent_comment_id    │        │     created_at           │
+│     comment_text         │        └─────────────┬────────────┘
+│     created_at           │                      │
+│     updated_at           │                      │
+└─────────────┬────────────┘                      │
+              │                                   │
+              │                                   │
+              │                                   │
+              │                                   │
+              ▼                                   ▼
+
+
+        ┌──────────────────────────────────────────────────┐
+        │                 POST_CATEGORIES                  │
+        ├──────────────────────────────────────────────────┤
+        │ FK  post_id          ─────────────── POSTS.id    │
+        │ FK  category_id      ───────── CATEGORIES.id     │
+        └──────────────────────────────────────────────────┘
+
+
+
+┌──────────────────────────┐        ┌──────────────────────────┐
+│       POST_LIKES         │        │       SAVED_POSTS        │
+├──────────────────────────┤        ├──────────────────────────┤
+│ PK  id                   │        │ PK  id                   │
+│ FK  user_id              │        │ FK  user_id              │
+│ FK  post_id              │        │ FK  post_id              │
+│     created_at           │        │     saved_at             │
+└─────────────┬────────────┘        └─────────────┬────────────┘
+              │                                   │
+              │                                   │
+              ▼                                   ▼
+
+         USERS.id                           USERS.id
+         POSTS.id                           POSTS.id
+
+
+
+
+╔═══════════════════════════════ RELATIONSHIPS ═══════════════════════════════╗
+
+USERS 1 ─────────────── M POSTS
+
+USERS 1 ─────────────── M COMMENTS
+POSTS 1 ─────────────── M COMMENTS
+
+USERS 1 ─────────────── M POST_LIKES
+POSTS 1 ─────────────── M POST_LIKES
+
+USERS 1 ─────────────── M SAVED_POSTS
+POSTS 1 ─────────────── M SAVED_POSTS
+
+POSTS M ─────────────── M CATEGORIES
+         (through POST_CATEGORIES)
+
+COMMENTS 1 ──────────── M COMMENTS
+(reply system using parent_comment_id)
+
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+
+
+
+
+
+
+
+
+
+const express = require('express');
+const router = express.Router();
+
+const db = require('../db/db');
+
+router.get('/setup', async(req,res)=>{
+
+    try{
+
+        const query = `
+        CREATE TABLE IF NOT EXISTS users(
+            id SERIAL PRIMARY KEY,
+            username VARCHAR(50) NOT NULL UNIQUE,
+            email VARCHAR(100) NOT NULL UNIQUE,
+            password TEXT NOT NULL,
+            role VARCHAR(20) DEFAULT 'user',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        `;
+
+        await db.query(query);
+
+        res.status(200).json({
+            message : 'Users table created successfully'
+        });
+
+    }catch(err){
+
+        console.log(err);
+
+        res.status(500).json({
+            error : 'Setup failed'
+        });
+
+    }
+
+});
+
+module.exports = router;
