@@ -1,16 +1,21 @@
 const jwt = require('jsonwebtoken');
-const pool = require('../Database/db');
-const authMiddleware = (req,res,next)=>{
+const adminMiddleware = (req,res,next)=>{
     const {authorization} = req.headers;
   
     try{
         const token = authorization.split(' ')[1];
         const decode = jwt.verify(token,process.env.JWT_SECRET);
-         const {username,id} = decode;
-         req.username = username;
+        
+        const {role,id} = decode;
+        if(role === 'admin'){
+         req.role = role;
          req.id= id;
 
         next()
+        }
+        else{
+            next('authentication failed');
+        }
     }catch(err){
         console.log(err);
         next('authentication failed');
@@ -18,4 +23,4 @@ const authMiddleware = (req,res,next)=>{
     }
 }
 
-module.exports = authMiddleware ;
+module.exports = adminMiddleware ;
