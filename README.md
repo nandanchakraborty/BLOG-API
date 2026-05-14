@@ -112,5 +112,6 @@ npm start
 ---
 
 ## 👨‍💻 Author
+Nandan chakraborty(CSE, BUBT)
 
 Built for learning full-stack backend development with Express + PostgreSQL.
