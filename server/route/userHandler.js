@@ -3,6 +3,8 @@ const router = express.Router();
 const pool = require("../../Database/db");
 const bcrypt = require("bcrypt");
 const cookieParser = require("cookie-parser");
+const multer = require('multer');
+const path = require('path');
 
 const jwt = require("jsonwebtoken");
 const authMiddleware = require("../../middleware/authMiddleware");
@@ -476,7 +478,7 @@ router.get("/search/:q", async (req, res) => {
 });
 
 
-
+//non user view post
 router.get("/view-posts",  async (req, res) => {
 	try {
 		const user_id = req.id;
@@ -493,4 +495,104 @@ router.get("/view-posts",  async (req, res) => {
 		res.sendStatus(500).json({ error: "internal server error" });
 	}
 });
+
+//image upload with post: multer  config
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'public/uploads/');
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        const ext = path.extname(file.originalname);
+        cb(null, uniqueSuffix + ext);
+    }
+});
+
+//image validation
+const fileFilter = (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|webp/;
+    const ext = path.extname(file.originalname).toLowerCase();
+    const mime = file.mimetype;
+
+    const isValid = allowedTypes.test(ext) && allowedTypes.test(mime);
+
+    if (isValid) {
+        cb(null, true);
+    } else {
+        cb(new Error("Only images (jpg, jpeg, png, webp) are allowed"));
+    }
+};
+const upload = multer({
+    storage,
+    fileFilter,
+    limits: { fileSize: 2 * 1024 * 1024 } // 2MB limit
+});
+
+router.get('/posts/create', async (req, res) => {
+    res.sendFile(
+        path.join(__dirname, '..', '..', 'public', 'create-post.html')
+    );
+});
+router.post(
+    '/posts',
+    upload.single('image'),
+    async (req, res) => {
+
+        const user_id = 1; // replace with req.id from auth later
+
+        const { title, content, status, category_id } = req.body;
+
+        try {
+
+            if (!title || !content) {
+                return res.status(400).json({
+                    error: "title and content required"
+                });
+            }
+
+            const slug = generateSlug(title);
+
+            const image = req.file
+                ? `/uploads/${req.file.filename}`
+                : null;
+
+            const query = `
+                INSERT INTO posts
+                (user_id, title, slug, content, status, category_id, featured_image, like_count, comment_count, view_count)
+                VALUES ($1,$2,$3,$4,$5,$6,$7,0,0,0)
+                RETURNING *
+            `;
+
+            const values = [
+                user_id,
+                title,
+                slug,
+                content,
+                status || 'draft',
+                category_id || null,
+                image
+            ];
+
+            const data = await pool.query(query, values);
+
+            return res.status(201).json({
+                message: 'post created successfully',
+                post: data.rows[0]
+            });
+			res.send('done')
+
+        } catch (err) {
+
+            console.log(err);
+
+            return res.status(500).json({
+                error: err.message || 'internal server error'
+            });
+
+        }
+    }
+);
+
+
+
 module.exports = router;

@@ -15,7 +15,7 @@ app.use('/user',UserRouter);
 app.use('/admin',AdminRouter);
 app.use('/post',PostRouter);
 
-
+app.use(express.static('public'));
  app.get('/',(req,res)=>{
     res.json({message :' hello'})
  })
