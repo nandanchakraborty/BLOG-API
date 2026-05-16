@@ -9,6 +9,7 @@ const path = require('path');
 const jwt = require("jsonwebtoken");
 const authMiddleware = require("../../middleware/authMiddleware");
 
+
 // //creating Database table
 // router.get('/setup', async(req,res)=>{
 
@@ -166,6 +167,9 @@ router.post("/login", async (req, res) => {
 	}
 
 	const isMatch = await bcrypt.compare(password, user.password);
+	console.log(password);
+	console.log(user.password);
+	console.log(isMatch);
 	if (isMatch) {
 		const token = jwt.sign(
 			{

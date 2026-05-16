@@ -3,6 +3,8 @@ const router = express.Router();
 const pool = require("../../Database/db");
 const authMiddleware = require("../../middleware/authMiddleware");
 
+
+
 //query for creating post_likes table AND SAVE POST
 // CREATE TABLE post_likes (
 //     id SERIAL PRIMARY KEY,

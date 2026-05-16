@@ -105,6 +105,7 @@ JWT_SECRET=your_secret
 ---
 
 ## ▶️ Run Project
+install all the dependencies from package.json Then:
 
 npm install  
 npm start  

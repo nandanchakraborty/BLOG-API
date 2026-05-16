@@ -7,6 +7,10 @@ const jwt = require("jsonwebtoken");
 const adminMiddleware = require("../../middleware/adminMiddleware");
 const Users = require("./userHandler");
 const authMiddleware = require("../../middleware/authMiddleware");
+
+
+
+
 //categories table create
 // router.get('/setup', async(req,res)=>{
 
