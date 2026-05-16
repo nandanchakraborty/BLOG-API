@@ -1,0 +1,452 @@
+openapi: 3.0.0
+
+info:
+    title: Blog API Documentation
+    version: 1.0.0
+    description: Full API documentation for the Blog API project built with Express.js and PostgreSQL.
+
+servers:
+    - url: http://localhost:3000
+      description: Local Development Server
+
+# 🟢 GLOBAL SECURITY: This adds the 'Authorize' button to the top-right of Swagger UI
+security:
+    - bearerAuth: []
+
+tags:
+    - name: Auth
+    - name: Posts
+    - name: Comments
+    - name: Engagement
+    - name: Profile
+    - name: Search
+
+components:
+    securitySchemes:
+        bearerAuth:
+            type: http
+            scheme: bearer
+            bearerFormat: JWT
+
+    schemas:
+        Register:
+            type: object
+            required:
+                - username
+                - email
+                - password
+            properties:
+                username:
+                    type: string
+                    example: dev_user
+                email:
+                    type: string
+                    example: user@gmail.com
+                password:
+                    type: string
+                    example: password123
+                role:
+                    type: string
+                    example: user
+
+        Login:
+            type: object
+            required:
+                - username
+                - password
+            properties:
+                username:
+                    type: string
+                    example: dev_user
+                password:
+                    type: string
+                    example: password123
+
+        CreatePost:
+            type: object
+            required:
+                - title
+                - content
+            properties:
+                title:
+                    type: string
+                    example: Building Blog API with Express
+                content:
+                    type: string
+                    example: This is my first blog post.
+                status:
+                    type: string
+                    example: published
+
+        Comment:
+            type: object
+            required:
+                - content
+            properties:
+                content:
+                    type: string
+                    example: Great blog post!
+
+paths:
+    # =========================
+    # AUTH ROUTES
+    # =========================
+    /users/register:
+        post:
+            tags:
+                - Auth
+            summary: Register new user
+            security: [] # 🟢 Public Route
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/Register"
+            responses:
+                "200":
+                    description: User inserted successfully
+                "409":
+                    description: User already exists
+
+    /users/login:
+        post:
+            tags:
+                - Auth
+            summary: Login user
+            security: [] # 🟢 Public Route
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/Login"
+            responses:
+                "200":
+                    description: Login successful
+                "404":
+                    description: Authentication failed
+
+    # =========================
+    # USER POSTS
+    # =========================
+    /users/add-post:
+        post:
+            tags:
+                - Posts
+            summary: Create a new post
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/CreatePost"
+            responses:
+                "201":
+                    description: Post created successfully
+
+    /users/view-owner-posts:
+        get:
+            tags:
+                - Posts
+            summary: View logged-in user's posts
+            responses:
+                "200":
+                    description: Success
+
+    /users/edit-post/{id}:
+        post:
+            tags:
+                - Posts
+            summary: Edit a post
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                      type: integer
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/CreatePost"
+            responses:
+                "200":
+                    description: Post updated successfully
+
+    /users/delete-post/{id}:
+        post:
+            tags:
+                - Posts
+            summary: Delete a post
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                      type: integer
+            responses:
+                "200":
+                    description: Post deleted successfully
+
+    /users/view-posts:
+        get:
+            tags:
+                - Posts
+            summary: Get all posts
+            security: [] # 🟢 Public Route
+            responses:
+                "200":
+                    description: Success
+
+    # =========================
+    # PROFILE
+    # =========================
+    /users/update-profile:
+        patch:
+            tags:
+                - Profile
+            summary: Update user's profile
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            properties:
+                                username:
+                                    type: string
+                                email:
+                                    type: string
+                                password:
+                                    type: string
+            responses:
+                "200":
+                    description: Profile updated
+
+    # =========================
+    # COMMENTS
+    # =========================
+    /users/posts/{id}/comments:
+        post:
+            tags:
+                - Comments
+            summary: Add comment to post
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                      type: integer
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/Comment"
+            responses:
+                "200":
+                    description: Comment added
+
+        get:
+            tags:
+                - Comments
+            summary: Get comments of a post
+            security: [] # 🟢 Public Route (Usually anyone can view comments)
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                      type: integer
+            responses:
+                "200":
+                    description: Success
+
+    /users/comments/{id}:
+        patch:
+            tags:
+                - Comments
+            summary: Update comment
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                      type: integer
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: "#/components/schemas/Comment"
+            responses:
+                "200":
+                    description: Comment updated
+
+        delete:
+            tags:
+                - Comments
+            summary: Delete comment
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                      type: integer
+            responses:
+                "200":
+                    description: Comment deleted
+
+    # =========================
+    # SEARCH
+    # =========================
+    /users/search/{q}:
+        get:
+            tags:
+                - Search
+            summary: Search posts
+            security: [] # 🟢 Public Route
+            parameters:
+                - name: q
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+            responses:
+                "200":
+                    description: Search results
+
+    # =========================
+    # IMAGE POST ROUTES
+    # =========================
+    /users/posts/create:
+        get:
+            tags:
+                - Posts
+            summary: Get HTML page for creating post with image
+            responses:
+                "200":
+                    description: HTML page loaded
+
+    /users/posts:
+        post:
+            tags:
+                - Posts
+            summary: Create post with image upload
+            requestBody:
+                required: true
+                content:
+                    multipart/form-data:
+                        schema:
+                            type: object
+                            properties:
+                                title:
+                                    type: string
+                                content:
+                                    type: string
+                                status:
+                                    type: string
+                                category_id:
+                                    type: integer
+                                image:
+                                    type: string
+                                    format: binary
+            responses:
+                "201":
+                    description: Post created successfully
+
+    # =========================
+    # BLOG HOME
+    # =========================
+    /posts/blog-home:
+        get:
+            tags:
+                - Posts
+            summary: Get all blog posts for homepage
+            responses:
+                "200":
+                    description: Success
+
+    /posts/view-count/{id}:
+        post:
+            tags:
+                - Engagement
+            summary: Increase view count
+            responses:
+                "200":
+                    description: View count updated
+
+    # =========================
+    # LIKES
+    # =========================
+    /posts/{id}/like:
+        post:
+            tags:
+                - Engagement
+            summary: Like a post
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                      type: integer
+            responses:
+                "200":
+                    description: Post liked successfully
+
+        delete:
+            tags:
+                - Engagement
+            summary: Remove like from post
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                      type: integer
+            responses:
+                "200":
+                    description: Like removed successfully
+
+    # =========================
+    # SAVE POSTS
+    # =========================
+    /posts/{id}/save:
+        post:
+            tags:
+                - Engagement
+            summary: Save a post
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                      type: integer
+            responses:
+                "200":
+                    description: Post saved successfully
+
+        delete:
+            tags:
+                - Engagement
+            summary: Remove saved post
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                      type: integer
+            responses:
+                "200":
+                    description: Saved post removed
+
+    /posts/me/saved-posts:
+        get:
+            tags:
+                - Engagement
+            summary: Get all saved posts of logged-in user
+            responses:
+                "200":
+                    description: Success
