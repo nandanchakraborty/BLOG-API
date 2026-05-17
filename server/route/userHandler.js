@@ -485,7 +485,6 @@ router.get("/search/:q", async (req, res) => {
 //non user view post
 router.get("/view-posts",  async (req, res) => {
 	try {
-		const user_id = req.id;
 
 		const data = await pool.query(
 			"SELECT * FROM posts "
