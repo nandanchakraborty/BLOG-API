@@ -1,5 +1,6 @@
 require("dotenv").config();
 const express = require("express");
+const cors = require('cors');
 const UserRouter = require("./server/route/userHandler");
 const AdminRouter = require("./server/route/adminHandler");
 const PostRouter = require("./server/route/postHandler");
@@ -18,7 +19,7 @@ app.use("/users", UserRouter);
 app.use("/admin", AdminRouter);
 app.use("/posts", PostRouter);
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-
+app.use(cors());
 app.use(express.static("public"));
 app.get('/', (req, res) => {
   logger.info('Home page was accessed'); // Info level
