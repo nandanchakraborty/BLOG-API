@@ -9,3 +9,4 @@ const pool = new Pool({
     // Add this SSL block so Render doesn't reject the connection
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
+module.exports = {pool};
