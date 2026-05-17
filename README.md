@@ -111,6 +111,34 @@ npm install
 npm start  
 
 ---
+# Blog API Project
+
+A production-ready RESTful Blog API built using Node.js, Express, and PostgreSQL, fully containerized with Docker and deployed on Render.
+
+## 🚀 Live Production Links
+* **API Base URL:** `https://blog-api-bbqz.onrender.com`
+* **Interactive API Documentation (Swagger):** `https://blog-api-bbqz.onrender.com/api-docs`
+
+---
+
+## 🛠️ Testing the API via Swagger UI
+
+You do not need Postman or Thunder Client to test this API. You can perform all requests (Register, Login, Create, View) directly from your web browser using the live Swagger documentation.
+
+### 1. Access the Dashboard
+Open your browser and navigate to:
+👉 [https://blog-api-bbqz.onrender.com/api-docs](https://blog-api-bbqz.onrender.com/api-docs)
+
+### 2. Register a New User (`POST /users/register`)
+1. Expand the **`POST /users/register`** section.
+2. Click the **"Try it out"** button on the right.
+3. Edit the request body JSON with your registration data:
+   ```json
+   {
+     "username": "nandan_dev",
+     "email": "nandan@example.com",
+     "password": "securepassword123"
+   }
 
 ## 👨‍💻 Author
 Nandan chakraborty(CSE, BUBT)
