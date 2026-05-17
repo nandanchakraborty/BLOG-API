@@ -496,7 +496,7 @@ router.get("/view-posts",  async (req, res) => {
 		});
 	} catch (err) {
 		console.log(err);
-		res.sendStatus(500).json({ error: "internal server error" });
+		res.status(500).json({ error: "internal server error" });
 	}
 });
 
