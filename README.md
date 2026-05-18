@@ -39,7 +39,7 @@ All protected routes require:
 Authorization: Bearer <token>
 
 ---
-
+## Password recovery and also Password update using Email verification
 ## 📌 API Endpoints
 
 ### Auth

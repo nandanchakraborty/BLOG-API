@@ -5,9 +5,12 @@ info:
     version: 1.0.0
     description: Full API documentation for the Blog API project built with Express.js and PostgreSQL.
 
+# 🚀 FIXED CORS: Pointing Swagger directly to your live production Render URL
 servers:
-    - url: http://localhost:3000
-      description: Local Development Server
+    - url: https://blog-api-bbqz.onrender.com
+      description: Production Server (Render)
+    - url: http://localhost:10000
+      description: Local Development Server (Docker/Node)
 
 # 🟢 GLOBAL SECURITY: This adds the 'Authorize' button to the top-right of Swagger UI
 security:
@@ -253,7 +256,7 @@ paths:
             tags:
                 - Comments
             summary: Get comments of a post
-            security: [] # 🟢 Public Route (Usually anyone can view comments)
+            security: [] # 🟢 Public Route
             parameters:
                 - name: id
                   in: path
