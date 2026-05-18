@@ -3,12 +3,15 @@ const router = express.Router();
 const pool = require("../../Database/db");
 const bcrypt = require("bcrypt");
 const cookieParser = require("cookie-parser");
-const multer = require('multer');
-const path = require('path');
-
+const multer = require("multer");
+require("dotenv").config();
+const path = require("path");
+const speakeasy = require("speakeasy");
+const nodemailer = require("nodemailer");
 const jwt = require("jsonwebtoken");
+const bodyParser = require("body-parser");
 const authMiddleware = require("../../middleware/authMiddleware");
-
+const { flushCompileCache } = require("module");
 
 // //creating Database table
 // router.get('/setup', async(req,res)=>{
@@ -118,36 +121,104 @@ const authMiddleware = require("../../middleware/authMiddleware");
 // );
 
 //register route
+
+// --- Helper Functions ---
+
+// Generates a unique secret per user by combining your global secret and their email
+function getUserSecret(email) {
+    return `${process.env.SECRET}_${email}`;
+}
+
+function generateOTP(email) {
+    return speakeasy.totp({
+        secret: getUserSecret(email),
+        encoding: 'ascii'
+    });
+}
+
+function verifyOTP(email, token) {
+    return speakeasy.totp.verify({
+        secret: getUserSecret(email),
+        encoding: 'ascii',
+        token: token,
+        window: 2 // Handles minor time-drifts (allows up to 60 seconds before/after)
+    });
+}
+
+async function sendOTPEmail(email, otp) {
+    const transporter = nodemailer.createTransport({
+        host: "smtp.gmail.com",
+        port: 465,
+        secure: true,
+        auth: {
+            user: process.env.EMAILUSER,
+            pass: process.env.EMAILPASSWORD,
+        },
+    });
+
+    await transporter.sendMail({
+        from: `"OTP Service" <${process.env.EMAILUSER}>`,
+        to: email,
+        subject: "Your OTP Code",
+        text: `Your OTP code is: ${otp}`,
+    });
+}
+
+// --- Combined Register Route ---
+
 router.post("/register", async (req, res) => {
-	const password = await bcrypt.hash(req.body.password, 10);
-	const { username, role, email } = req.body;
+    // We expect 'otp' to be passed from the frontend ONLY on the second step.
+    const { username, email, password, role, otp } = req.body;
 
-	const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    try {
+        // 1. Check if user already exists in the system
+        const existingUser = await pool.query(
+            `SELECT * FROM users WHERE email = $1`,
+            [email]
+        );
 
-	if (!regex.test(email)) {
-		return res.status(400).json({
-			error: "Invalid email format",
-		});
-	}
-	const data = await pool.query("SELECT * FROM users WHERE email = $1", [
-		email,
-	]);
-	if (data.rows.length > 0) {
-		res.status(409).json({ error: "user already exist" });
-	}
+        if (existingUser.rows.length > 0) {
+            return res.status(409).json({ error: "User already exists" });
+        }
 
-	try {
-		await pool.query(
-			"INSERT INTO users (username,email,password,role) VALUES ($1, $2,$3,$4)",
-			[username, email, password, role],
-		);
-		res.status(200).send({ message: "User inserted successfully" });
-	} catch (err) {
-		console.log(err);
-		res.status(500).send({ message: "" });
-	}
+        // 2. STEP 1: If NO OTP is provided, generate and send it
+        if (!otp) {
+            const generatedOtp = generateOTP(email);
+            await sendOTPEmail(email, generatedOtp);
+
+            return res.status(200).json({
+                message: "OTP sent successfully. Please verify to complete registration.",
+                otp // TODO: Remove this property in production!
+            });
+        }
+
+        // 3. STEP 2: If an OTP IS provided, verify it
+        const isVerified = verifyOTP(email, otp);
+
+        if (!isVerified) {
+            return res.status(400).json({ error: "Invalid or expired OTP" });
+        }
+
+        // 4. OTP is correct! Hash the password and commit to the database
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        await pool.query(
+            `INSERT INTO users (username, email, password, role)
+             VALUES ($1, $2, $3, $4)`,
+            [username, email, hashedPassword, role || 'user'] // defaults to 'user' if role isn't provided
+        );
+
+        return res.status(201).json({
+            message: "User registered successfully"
+        });
+
+    } catch (err) {
+        console.error("Registration Error:", err);
+        return res.status(500).json({ error: "Internal server error" });
+    }
 });
 
+module.exports = router;
 //login routes
 router.post("/login", async (req, res) => {
 	const { username, password } = req.body;
@@ -451,9 +522,9 @@ router.delete("/comments/:id", authMiddleware, async (req, res) => {
 
 router.get("/search/:q", async (req, res) => {
 	const q = req.params.q;
-    console.log(q);
+	console.log(q);
 	try {
-        const limit = 5;
+		const limit = 5;
 		const page = 1;
 
 		const offset = (page - 1) * limit;
@@ -464,7 +535,7 @@ router.get("/search/:q", async (req, res) => {
      WHERE title ILIKE $1
      OR content ILIKE $1
      ORDER BY created_at DESC`,
-			[`%${q}%`,limit,offset],
+			[`%${q}%`, limit, offset],
 		);
 
 		if (data.rows.length > 0) {
@@ -481,14 +552,10 @@ router.get("/search/:q", async (req, res) => {
 	}
 });
 
-
 //non user view post
-router.get("/view-posts",  async (req, res) => {
+router.get("/view-posts", async (req, res) => {
 	try {
-
-		const data = await pool.query(
-			"SELECT * FROM posts "
-		);
+		const data = await pool.query("SELECT * FROM posts ");
 		res.status(200).json({
 			data: data.rows,
 			message: "successfull",
@@ -501,101 +568,92 @@ router.get("/view-posts",  async (req, res) => {
 
 //image upload with post: multer  config
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'public/uploads/');
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        const ext = path.extname(file.originalname);
-        cb(null, uniqueSuffix + ext);
-    }
+	destination: (req, file, cb) => {
+		cb(null, "public/uploads/");
+	},
+	filename: (req, file, cb) => {
+		const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+		const ext = path.extname(file.originalname);
+		cb(null, uniqueSuffix + ext);
+	},
 });
 
 //image validation
 const fileFilter = (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|webp/;
-    const ext = path.extname(file.originalname).toLowerCase();
-    const mime = file.mimetype;
+	const allowedTypes = /jpeg|jpg|png|webp/;
+	const ext = path.extname(file.originalname).toLowerCase();
+	const mime = file.mimetype;
 
-    const isValid = allowedTypes.test(ext) && allowedTypes.test(mime);
+	const isValid = allowedTypes.test(ext) && allowedTypes.test(mime);
 
-    if (isValid) {
-        cb(null, true);
-    } else {
-        cb(new Error("Only images (jpg, jpeg, png, webp) are allowed"));
-    }
+	if (isValid) {
+		cb(null, true);
+	} else {
+		cb(new Error("Only images (jpg, jpeg, png, webp) are allowed"));
+	}
 };
 const upload = multer({
-    storage,
-    fileFilter,
-    limits: { fileSize: 2 * 1024 * 1024 } // 2MB limit
+	storage,
+	fileFilter,
+	limits: { fileSize: 2 * 1024 * 1024 }, // 2MB limit
 });
 
-router.get('/posts/create', async (req, res) => {
-    res.sendFile(
-        path.join(__dirname, '..', '..', 'public', 'create-post.html')
-    );
+router.get("/posts/create", async (req, res) => {
+	res.sendFile(
+		path.join(__dirname, "..", "..", "public", "create-post.html"),
+	);
 });
-router.post(
-    '/posts',
-    upload.single('image'),
-    async (req, res) => {
+router.post("/posts", upload.single("image"), async (req, res) => {
+	const user_id = 1; // replace with req.id from auth later
 
-        const user_id = 1; // replace with req.id from auth later
+	const { title, content, status, category_id } = req.body;
 
-        const { title, content, status, category_id } = req.body;
+	try {
+		if (!title || !content) {
+			return res.status(400).json({
+				error: "title and content required",
+			});
+		}
 
-        try {
+		const slug = generateSlug(title);
 
-            if (!title || !content) {
-                return res.status(400).json({
-                    error: "title and content required"
-                });
-            }
+		const image = req.file ? `/uploads/${req.file.filename}` : null;
 
-            const slug = generateSlug(title);
-
-            const image = req.file
-                ? `/uploads/${req.file.filename}`
-                : null;
-
-            const query = `
+		const query = `
                 INSERT INTO posts
                 (user_id, title, slug, content, status, category_id, featured_image, like_count, comment_count, view_count)
                 VALUES ($1,$2,$3,$4,$5,$6,$7,0,0,0)
                 RETURNING *
             `;
 
-            const values = [
-                user_id,
-                title,
-                slug,
-                content,
-                status || 'draft',
-                category_id || null,
-                image
-            ];
+		const values = [
+			user_id,
+			title,
+			slug,
+			content,
+			status || "draft",
+			category_id || null,
+			image,
+		];
 
-            const data = await pool.query(query, values);
+		const data = await pool.query(query, values);
 
-            return res.status(201).json({
-                message: 'post created successfully',
-                post: data.rows[0]
-            });
-			res.send('done')
+		return res.status(201).json({
+			message: "post created successfully",
+			post: data.rows[0],
+		});
+		res.send("done");
+	} catch (err) {
+		console.log(err);
 
-        } catch (err) {
+		return res.status(500).json({
+			error: err.message || "internal server error",
+		});
+	}
+});
 
-            console.log(err);
-
-            return res.status(500).json({
-                error: err.message || 'internal server error'
-            });
-
-        }
-    }
-);
-
-
-
-module.exports = router;
+module.exports = {
+	router,
+generateOTP,
+sendOTPEmail,
+verifyOTP};
