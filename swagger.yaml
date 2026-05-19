@@ -55,16 +55,15 @@ components:
         Login:
             type: object
             required:
-                - username
+                - email
                 - password
             properties:
-                username:
+                email:
                     type: string
-                    example: dev_user
+                    example: user@gmail.com
                 password:
                     type: string
                     example: password123
-
         CreatePost:
             type: object
             required:
